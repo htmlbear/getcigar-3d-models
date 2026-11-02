@@ -30,5 +30,6 @@ jobs:
           git add stl/full_v1/
           if ! git diff --cached --quiet; then
             git commit -m "Generate full drawer v1 STL models"
-            git push
+            git pull --rebase origin main
+            git push origin main
           fi
