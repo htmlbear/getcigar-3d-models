@@ -1,0 +1,34 @@
+name: Build fit-check STL models
+
+on:
+  push:
+    paths:
+      - 'src/fitcheck_v0_1.scad'
+      - '.github/workflows/build-fitcheck-stl.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad
+      - name: Export all printable parts
+        run: |
+          mkdir -p stl/fitcheck_v0_1
+          for part in drawer bottom runner guide runner_test guide_test spacer; do
+            openscad -o "stl/fitcheck_v0_1/${part}.stl" -D "part=\"${part}\"" src/fitcheck_v0_1.scad
+          done
+      - name: Commit printable STL files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/fitcheck_v0_1/
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate lightweight printable STL models v0.1"
+            git push
+          fi
