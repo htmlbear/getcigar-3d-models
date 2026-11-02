@@ -1,0 +1,34 @@
+name: Build full drawer v1 STL
+
+on:
+  push:
+    paths:
+      - 'src/full_v1/GetCigar_full_v1.scad'
+      - '.github/workflows/build-full-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad
+      - name: Export STL parts
+        run: |
+          mkdir -p stl/full_v1
+          for part in drawer runner guide divider runner_test guide_test stop; do
+            openscad -o "stl/full_v1/${part}.stl" -D "part=\"${part}\"" src/full_v1/GetCigar_full_v1.scad
+          done
+      - name: Commit generated models
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/full_v1/
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate full drawer v1 STL models"
+            git push
+          fi
