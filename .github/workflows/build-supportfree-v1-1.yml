@@ -1,0 +1,32 @@
+name: Export support-free v1.1 STL
+on:
+  push:
+    paths:
+      - 'src/supportfree_v1_1.scad'
+      - '.github/workflows/build-supportfree-v1-1.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad
+      - name: Export separate printable parts
+        run: |
+          mkdir -p stl/supportfree_v1_1
+          for part in side front back bottom post runner guide runner_test guide_test divider; do
+            openscad -o "stl/supportfree_v1_1/${part}.stl" -D "part=\"${part}\"" src/supportfree_v1_1.scad
+          done
+      - name: Push generated STL
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/supportfree_v1_1
+          if ! git diff --cached --quiet; then
+            git commit -m "Export support-free thin panel STL kit v1.1"
+            git pull --rebase origin main
+            git push
+          fi
