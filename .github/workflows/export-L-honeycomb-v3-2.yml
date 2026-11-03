@@ -1,0 +1,30 @@
+name: Export L honeycomb v3.2 STL
+on:
+  push:
+    paths:
+      - 'src/GetCigar_drawer_L_honeycomb_v3_2.scad'
+      - '.github/workflows/export-L-honeycomb-v3-2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad
+      - name: Export L drawer
+        run: |
+          mkdir -p stl/L_honeycomb_v3_2
+          openscad -o stl/L_honeycomb_v3_2/drawer_L.stl src/GetCigar_drawer_L_honeycomb_v3_2.scad
+      - name: Commit generated STL
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/L_honeycomb_v3_2/drawer_L.stl
+          if ! git diff --cached --quiet; then
+            git commit -m "Export L honeycomb v3.2 STL"
+            git pull --rebase origin main
+            git push
+          fi
