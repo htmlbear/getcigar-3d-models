@@ -14,13 +14,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install OpenSCAD
         run: sudo apt-get update && sudo apt-get install -y openscad
-      - name: Export vertical STL
+      - name: Export STL
         run: |
           mkdir -p stl/L_honeycomb_v3_4
-          printf 'translate([0,100,0]) rotate([90,0,0]) include <../../src/GetCigar_drawer_L_honeycomb_v3_4_no_divider_mounts.scad>;\n' > stl/L_honeycomb_v3_4/vertical_export.scad
-          openscad -o stl/L_honeycomb_v3_4/drawer_L_vertical.stl stl/L_honeycomb_v3_4/vertical_export.scad
+          openscad -o /tmp/drawer_original.stl src/GetCigar_drawer_L_honeycomb_v3_4_no_divider_mounts.scad
+          test -s /tmp/drawer_original.stl
+          python3 -m pip install --break-system-packages trimesh numpy
+          python3 - <<'PY'
+          import trimesh, numpy as np
+          mesh = trimesh.load('/tmp/drawer_original.stl', force='mesh')
+          matrix = trimesh.transformations.rotation_matrix(np.pi/2, [1,0,0])
+          mesh.apply_transform(matrix)
+          mesh.apply_translation([0,100,0])
+          assert mesh.is_watertight
+          mesh.export('stl/L_honeycomb_v3_4/drawer_L_vertical.stl')
+          print('STL exported:', mesh.bounds, len(mesh.faces))
+          PY
           test -s stl/L_honeycomb_v3_4/drawer_L_vertical.stl
-          rm stl/L_honeycomb_v3_4/vertical_export.scad
+      - name: Upload STL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drawer-L-v3-4-vertical-STL
+          path: stl/L_honeycomb_v3_4/drawer_L_vertical.stl
       - name: Commit STL
         run: |
           git config user.name "github-actions[bot]"
