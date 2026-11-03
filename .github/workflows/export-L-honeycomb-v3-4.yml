@@ -1,0 +1,33 @@
+name: Export L honeycomb v3.4 vertical STL
+on:
+  push:
+    paths:
+      - 'src/GetCigar_drawer_L_honeycomb_v3_4_no_divider_mounts.scad'
+      - '.github/workflows/export-L-honeycomb-v3-4.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD
+        run: sudo apt-get update && sudo apt-get install -y openscad
+      - name: Export vertical STL
+        run: |
+          mkdir -p stl/L_honeycomb_v3_4
+          printf 'translate([0,100,0]) rotate([90,0,0]) include <../../src/GetCigar_drawer_L_honeycomb_v3_4_no_divider_mounts.scad>;\n' > stl/L_honeycomb_v3_4/vertical_export.scad
+          openscad -o stl/L_honeycomb_v3_4/drawer_L_vertical.stl stl/L_honeycomb_v3_4/vertical_export.scad
+          test -s stl/L_honeycomb_v3_4/drawer_L_vertical.stl
+          rm stl/L_honeycomb_v3_4/vertical_export.scad
+      - name: Commit STL
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/L_honeycomb_v3_4/drawer_L_vertical.stl
+          if ! git diff --cached --quiet; then
+            git commit -m "Export v3.4 vertical STL"
+            git pull --rebase origin main
+            git push
+          fi
