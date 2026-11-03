@@ -1,0 +1,49 @@
+name: Export L v5.0 optimized STL
+on:
+  push:
+    paths:
+      - 'src/GetCigar_drawer_L_v5_0_optimized.scad'
+      - '.github/workflows/export-L-v5-0.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CAD and mesh tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openscad python3-trimesh python3-numpy
+      - name: Export and validate STL
+        run: |
+          mkdir -p stl/L_v5_0_optimized
+          openscad -o /tmp/drawer_native.stl src/GetCigar_drawer_L_v5_0_optimized.scad
+          python3 - <<'PY'
+          import numpy as np, trimesh
+          m=trimesh.load('/tmp/drawer_native.stl',force='mesh')
+          assert m.is_watertight and m.body_count==1, (m.is_watertight,m.body_count)
+          assert np.allclose(m.extents,[140,350,100],atol=0.01),m.extents
+          m.apply_transform(trimesh.transformations.rotation_matrix(np.pi/2,[1,0,0]))
+          m.apply_translation([0,100,0])
+          assert np.allclose(m.extents,[140,100,350],atol=0.01),m.extents
+          m.export('stl/L_v5_0_optimized/drawer_L_v5_0_vertical.stl')
+          print('Validated:',m.extents,'faces:',len(m.faces))
+          PY
+          test -s stl/L_v5_0_optimized/drawer_L_v5_0_vertical.stl
+      - name: Upload STL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GetCigar-L-v5-0-vertical-STL
+          path: stl/L_v5_0_optimized/drawer_L_v5_0_vertical.stl
+      - name: Commit STL to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/L_v5_0_optimized/drawer_L_v5_0_vertical.stl
+          if ! git diff --cached --quiet; then
+            git commit -m "Export optimized v5.0 vertical STL"
+            git pull --rebase origin main
+            git push
+          fi
