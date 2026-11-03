@@ -1,0 +1,49 @@
+name: Export L v4.0 open rear STL
+on:
+  push:
+    paths:
+      - 'src/GetCigar_drawer_L_v4_0_open_rear.scad'
+      - '.github/workflows/export-L-v4-0-open-rear.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD and trimesh
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openscad python3-trimesh python3-numpy
+      - name: Export and orient
+        run: |
+          mkdir -p stl/L_v4_0_open_rear
+          openscad -o /tmp/drawer_native.stl src/GetCigar_drawer_L_v4_0_open_rear.scad
+          python3 - <<'PY'
+          import trimesh, numpy as np
+          mesh=trimesh.load('/tmp/drawer_native.stl',force='mesh')
+          assert mesh.is_watertight, 'Not watertight'
+          assert len(mesh.split(only_watertight=False))==1, 'Not a single solid'
+          mesh.apply_transform(trimesh.transformations.rotation_matrix(np.pi/2,[1,0,0]))
+          mesh.apply_translation([0,100,0])
+          assert np.allclose(mesh.extents,[140,100,350],atol=.01), mesh.extents
+          mesh.export('stl/L_v4_0_open_rear/drawer_L_v4_0_open_rear_vertical.stl')
+          print('Validated',mesh.bounds)
+          PY
+          test -s stl/L_v4_0_open_rear/drawer_L_v4_0_open_rear_vertical.stl
+      - name: Upload STL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drawer-L-v4-0-open-rear
+          path: stl/L_v4_0_open_rear/drawer_L_v4_0_open_rear_vertical.stl
+      - name: Commit STL to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stl/L_v4_0_open_rear/drawer_L_v4_0_open_rear_vertical.stl
+          if ! git diff --cached --quiet; then
+            git commit -m "Export L v4.0 open rear STL"
+            git pull --rebase origin main
+            git push
+          fi
