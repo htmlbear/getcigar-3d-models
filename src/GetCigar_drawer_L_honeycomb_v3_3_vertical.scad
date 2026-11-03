@@ -25,7 +25,12 @@ module notch(){x0=(W-notch_width)/2; y0=-.6; z0=H-notch_depth;r=notch_r;dy=wall+
 union(){translate([x0,y0,z0+r])cube([notch_width,dy,notch_depth-r+1]);translate([x0+r,y0,z0])cube([notch_width-2*r,dy,notch_depth+1]);for(x=[x0+r,x0+notch_width-r])translate([x,y0,z0+r])rotate([-90,0,0])cylinder(h=dy,r=r,$fn=40);}}
 module honeycomb_shell(){difference(){
  difference(){cube([W,D,H]);translate([wall,wall,floor_t])cube([W-2*wall,D-2*wall,H-floor_t+.5]);}
- for(ix=[0:fnx-1],iy=[0:fny-1]) {\n   xx=fmx+ix*floor_pitch+(iy%2)*floor_pitch/2;\n   yy=fmy+iy*floor_pitch;\n   if(xx+floor_opening/2<=W-floor_min_margin_x)\n     translate([xx,yy,-.5])linear_extrude(height=floor_t+1)hex2d(floor_opening,floor_opening);\n }
+ for(ix=[0:fnx-1],iy=[0:fny-1]) {
+   xx=fmx+ix*floor_pitch+(iy%2)*floor_pitch/2;
+   yy=fmy+iy*floor_pitch;
+   if(xx+floor_opening/2<=W-floor_min_margin_x)
+     translate([xx,yy,-.5])linear_extrude(height=floor_t+1)hex2d(floor_opening,floor_opening);
+ }
  for(row=[0:hex_rows-1],n=[0:ceil(D/hex_pitch)]){zz=hex_first_z+row*hex_row_pitch; yy=hex_end_margin+hex_width/2+n*hex_pitch+(row%2)*hex_pitch/2;
  if(yy+hex_width/2<=D-hex_end_margin && zz+hex_height/2<=H-7 && zz-hex_height/2>=6){side_cut(-.6,yy,zz);side_cut(W-wall-.6,yy,zz);}}
  for(row=[0:hex_rows-1],n=[0:ceil(W/hex_pitch)]){zz=hex_first_z+row*hex_row_pitch;xx=10+hex_width/2+n*hex_pitch+(row%2)*hex_pitch/2;
