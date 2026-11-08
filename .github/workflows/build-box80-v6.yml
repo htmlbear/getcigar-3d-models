@@ -20,7 +20,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y openscad
-          python -m pip install --break-system-packages trimesh numpy
+          python -m pip install --break-system-packages trimesh numpy networkx
       - name: Render SINGLE STL with Boolean union
         run: |
           openscad -o stl/box80_v6_PRINT_ON_END_150x120x350.stl src/box80_v6/box80_v6_reinforced.scad
