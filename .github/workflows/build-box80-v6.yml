@@ -1,0 +1,48 @@
+name: Build Box 80 v6 single reinforced STL
+
+on:
+  push:
+    paths:
+      - 'src/box80_v6/**'
+      - '.github/workflows/build-box80-v6.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD and mesh validator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages trimesh numpy
+      - name: Render SINGLE STL with Boolean union
+        run: |
+          openscad -o stl/box80_v6_PRINT_ON_END_150x120x350.stl src/box80_v6/box80_v6_reinforced.scad
+      - name: Validate watertight single-body print model and size
+        run: |
+          python - <<'PY'
+          import numpy as np, trimesh
+          src='stl/box80_v6_PRINT_ON_END_150x120x350.stl'
+          m=trimesh.load(src, force='mesh', process=True)
+          assert m.is_watertight, 'Generated STL is not watertight'
+          assert m.is_winding_consistent, 'Winding inconsistent'
+          assert m.is_volume and m.volume>0, 'Invalid solid'
+          assert len(m.split(only_watertight=True))==1, 'Expected exactly one connected body'
+          assert np.allclose(m.extents, [150,120,350], atol=0.03), m.extents
+          print('VALIDATION PASSED; triangles:',len(m.faces),'bounds:',m.bounds,'volume:',m.volume)
+          PY
+      - name: Commit only the final one-box STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/box80_v6_PRINT_ON_END_150x120x350.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build: Box 80 v6 reinforced single printable STL'
+            git push
+          fi
