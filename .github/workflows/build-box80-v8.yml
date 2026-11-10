@@ -1,0 +1,78 @@
+name: Build Box 80 v8 hex sidewalls
+
+on:
+  push:
+    paths:
+      - 'src/box80_v8/**'
+      - '.github/workflows/build-box80-v8.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD and STL validator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages trimesh numpy networkx rtree
+
+      - name: Render only Box 80 v8 from verified v7 source
+        run: |
+          openscad -o stl/box80_v8_honeycomb_sidewalls_PRINT_ON_END_150x120x350.stl src/box80_v8/box80_v8_honeycomb_sidewalls.scad
+
+      - name: Verify dimensions, solid, local subtraction and actual through-holes
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          src = trimesh.load('stl/box80_v7_PRINT_ON_END_150x120x350.stl', force='mesh', process=True)
+          out = trimesh.load('stl/box80_v8_honeycomb_sidewalls_PRINT_ON_END_150x120x350.stl', force='mesh', process=True)
+          for name, m in [('v7', src), ('v8', out)]:
+              assert m.is_watertight, f'{name}: unclosed mesh'
+              assert m.is_winding_consistent, f'{name}: winding inconsistent'
+              assert m.is_volume and m.volume > 0, f'{name}: invalid volume'
+              assert len(m.split(only_watertight=True)) == 1, f'{name}: mesh disconnected'
+              assert np.allclose(m.extents, [150, 120, 350], atol=0.035), (name, m.extents)
+
+          # Only subtractive machining; an entirely unchanged roof/floor and
+          # mating surfaces are guaranteed by the CAD difference() cutters
+          # restricted to 16.9 <= Y <= 103.1 and both near-side X wall belts.
+          assert out.volume < src.volume * 0.97, ('sidewalls seem uncut', src.volume, out.volume)
+          assert out.volume > src.volume * 0.50, ('too much material removed', src.volume, out.volume)
+
+          # Upper male profile width from v7 must remain at exactly 132 mm.
+          top = out.vertices[out.vertices[:, 1] >= 116.80]
+          assert len(top) > 30, 'upper mating relief missing'
+          assert np.isclose(top[:,0].min(), 9, atol=0.04), top[:,0].min()
+          assert np.isclose(top[:,0].max(), 141, atol=0.04), top[:,0].max()
+
+          # The printed box remains open only where we intentionally place
+          # honeycomb holes; two wall test points must go from solid to void.
+          test_holes = np.asarray([[2.0, 60.0-30.558, 40.0],
+                                   [148.0, 60.0-30.558, 40.0]])
+          assert src.contains(test_holes).all(), 'source wall not solid at sample points'
+          assert not out.contains(test_holes).any(), 'through-hole absent on one or both walls'
+
+          print('VALIDATION PASSED')
+          print('Bounds:', out.bounds, 'extents:', out.extents)
+          print('Volume v7:', src.volume, 'v8:', out.volume, 'removed %:',100*(src.volume-out.volume)/src.volume)
+          print('Upper profile: max 132 mm; two tested through-holes confirmed')
+          PY
+
+      - name: Commit only new versioned v8 STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/box80_v8_honeycomb_sidewalls_PRINT_ON_END_150x120x350.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(v8): verified honeycomb sidewalls STL, old versions preserved'
+            git pull --rebase origin main
+            git push
+          fi
