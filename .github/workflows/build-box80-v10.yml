@@ -1,0 +1,83 @@
+name: Build and validate Box 80 v10 Light STL
+
+on:
+  push:
+    paths:
+      - 'src/box80_v10/**'
+      - '.github/workflows/build-box80-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CAD and validation utilities
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages trimesh numpy networkx rtree
+
+      - name: Build latest thin-wall model
+        run: |
+          openscad -o stl/box80_v10_light_PRINT_ON_END_150x120x350.stl src/box80_v10/box80_v10_light.scad
+
+      - name: Compare v10 against v9 reference geometry
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          old=trimesh.load('stl/box80_v9_light_PRINT_ON_END_150x120x350.stl',force='mesh',process=True)
+          new=trimesh.load('stl/box80_v10_light_PRINT_ON_END_150x120x350.stl',force='mesh',process=True)
+
+          for name,mesh in [('v9',old),('v10',new)]:
+              assert mesh.is_watertight, f'{name}: unclosed'
+              assert mesh.is_winding_consistent, f'{name}: inconsistent winding'
+              assert mesh.is_volume and mesh.volume>0, f'{name}: not a positive volume'
+              assert len(mesh.split(only_watertight=True)) == 1, f'{name}: not connected'
+          assert np.allclose(new.bounds,old.bounds,atol=0.04), 'outside dimensions changed'
+          assert np.allclose(new.extents,[150,120,350],atol=0.04)
+          assert 5000 < old.volume-new.volume < 20000, (old.volume,new.volume)
+
+          # Make sure both ends, structural belts and upper stacking
+          # profiles are outside the thin-wall pocket coordinates.
+          for axis,level in ((1,116.8),(1,115.5)):
+              a=old.vertices[old.vertices[:,axis]>=level]
+              b=new.vertices[new.vertices[:,axis]>=level]
+              assert np.allclose(a.min(axis=0),b.min(axis=0),atol=0.04), 'upper flange min changed'
+              assert np.allclose(a.max(axis=0),b.max(axis=0),atol=0.04), 'upper flange max changed'
+          top=new.vertices[new.vertices[:,1]>=116.80]
+          assert np.isclose(top[:,0].min(),9,atol=0.04)
+          assert np.isclose(top[:,0].max(),141,atol=0.04)
+
+          # The new subtraction is entirely within the X inner wall
+          # sliver and y/z wall field. Probe unchanged zones of v9.
+          retained=np.asarray([(x,y,z)
+                               for x in (1.9,148.1)
+                               for y,z in ((60,3),(60,347),(10,330),(110,330))])
+          assert np.array_equal(old.contains(retained),new.contains(retained)), 'end frame or structural belt changed'
+
+          removed=old.volume-new.volume
+          print('PASS: one closed connected mesh; identical outer and stacking bounds')
+          print('v9 volume:',round(old.volume,2),'mm3')
+          print('v10 volume:',round(new.volume,2),'mm3')
+          print('removed:',round(removed,2),'mm3 =',round(removed/old.volume*100,2),'% of v9')
+          print('estimated full-solid PETG-equivalent removed:',round(removed/1000*1.27,2),'g')
+          print('NOTE: actual Elegoo Slicer filament consumption and strength UNTESTED.')
+          PY
+
+      - name: Commit only new STL, preserve all previous versions
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/box80_v10_light_PRINT_ON_END_150x120x350.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(box80-v10): checked lightweight sidewall STL'
+            git pull --rebase origin main
+            git push
+          fi
