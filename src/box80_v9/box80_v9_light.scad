@@ -6,7 +6,7 @@
 // Axes in print-on-end orientation: X=150 mm, Y=120 mm, Z=350 mm.
 // OpenSCAD path is resolved relative to this source file.
 //
-// Additional hexagonal ventilation cutouts in 4 mm left/right sidewalls:
+// Additional hexagonal ventilation cutouts plus recessed inner sidewall skins:
 // two near the Z=350 end (in the previously solid outer rows), and
 // one near Z=0 (in the previously solid center row), PER SIDE.
 // Leave at least 5 mm around the end faces and avoid Y<16.9/Y>103.1
@@ -56,8 +56,24 @@ module extra_sidewall_cells(x_start) {
 
 // Both cutters are confined to the external X-shell walls (nominal 4 mm).
 // They never reach X=5..145, preserving basket passage and reinforcement.
+// Recess ONLY the INNER faces of the free perforated sidewall panels.
+// The OUTER mating surface stays at X=0/150, with 2.1-mm PETG skin.
+// The entire end frame (Z<12 and Z>338), top/bottom joining belts
+// (Y<17 and Y>103) and all original X>5 / X<145 ribs stay at full depth.
+// No added matter and no interference with the original v8 profile.
+remaining_panel_wall = 2.1;
+module inner_relief_pockets() {
+    // Left outer face at X=0: keep X=0..2.1.
+    translate([remaining_panel_wall, 17, 12])
+        cube([5 - remaining_panel_wall, 86, 326], center=false);
+    // Right outer face at X=150: keep X=147.9..150.
+    translate([145, 17, 12])
+        cube([5 - remaining_panel_wall, 86, 326], center=false);
+}
+
 difference() {
     import(source_stl, convexity=15);
     extra_sidewall_cells(-0.5);
     extra_sidewall_cells(145.0);
+    inner_relief_pockets();
 }
