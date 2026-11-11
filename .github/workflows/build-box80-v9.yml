@@ -1,0 +1,96 @@
+name: Build and validate Box 80 v9 Light STL
+
+on:
+  push:
+    paths:
+      - 'src/box80_v9/**'
+      - '.github/workflows/build-box80-v9.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install OpenSCAD and validation dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages trimesh numpy networkx rtree
+
+      - name: Render v9 from the original v8 production STL
+        run: |
+          openscad -o stl/box80_v9_light_PRINT_ON_END_150x120x350.stl src/box80_v9/box80_v9_light.scad
+
+      - name: Check identical fit geometry and six new through-holes
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          path_v8 = 'stl/box80_v8_honeycomb_sidewalls_PRINT_ON_END_150x120x350.stl'
+          path_v9 = 'stl/box80_v9_light_PRINT_ON_END_150x120x350.stl'
+          old = trimesh.load(path_v8, force='mesh', process=True)
+          new = trimesh.load(path_v9, force='mesh', process=True)
+
+          for name, mesh in [('v8', old), ('v9', new)]:
+              assert mesh.is_watertight, f'{name}: not watertight'
+              assert mesh.is_winding_consistent, f'{name}: winding invalid'
+              assert mesh.is_volume and mesh.volume > 0, f'{name}: invalid volume'
+              assert len(mesh.split(only_watertight=True)) == 1, f'{name}: disconnected mesh'
+
+          # No scaling, no added features, no shape changes outside the two
+          # 4-mm long sidewalls. Original stacking seats are unchanged.
+          assert np.allclose(new.bounds, old.bounds, atol=0.04), (old.bounds, new.bounds)
+          assert np.allclose(new.extents, [150,120,350], atol=0.04), new.extents
+          assert old.volume * 0.80 < new.volume < old.volume - 2000, (old.volume,new.volume)
+
+          top_orig = old.vertices[old.vertices[:,1]>=116.80]
+          top_new = new.vertices[new.vertices[:,1]>=116.80]
+          for k in (0,1):
+              assert np.isclose(top_orig[:,k].min(),top_new[:,k].min(),atol=0.04)
+              assert np.isclose(top_orig[:,k].max(),top_new[:,k].max(),atol=0.04)
+          assert np.isclose(top_new[:,0].min(), 9, atol=0.04)
+          assert np.isclose(top_new[:,0].max(), 141, atol=0.04)
+
+          # All six requested through holes must have been cut through
+          # material that really existed in the original v8 sidewall.
+          holes = np.asarray([
+              (x, y, z)
+              for x in (2.,148.)
+              for (y,z) in ((29.442,330.),(90.558,330.),(60.,24.))
+          ])
+          assert old.contains(holes).all(), 'hole position overlapped a prior opening'
+          assert not new.contains(holes).any(), 'new cut did not pass through a sidewall'
+
+          # Preserved end ribs and original strengthened sidewall belts.
+          retained = np.asarray([
+              (x,y,z)
+              for x in (2.,148.)
+              for (y,z) in ((60.,3.),(60.,348.),(10.,330.),(110.,330.))
+          ])
+          assert np.array_equal(old.contains(retained),new.contains(retained)), 'protective rail changed'
+
+          removed = old.volume - new.volume
+          print('VALIDATED v9 Light')
+          print('Bounds',new.bounds)
+          print('Removed mm^3', round(removed,2))
+          print('CAD volume reduction',round(100*removed/old.volume,2),'%')
+          print('Six new sidewall openings; original outer and stacking geometry preserved.')
+          print('NOTE: no strength or slicer-filament-mass guarantee without physical test.')
+          PY
+
+      - name: Commit only the new versioned STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/box80_v9_light_PRINT_ON_END_150x120x350.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(box80-v9): validated lightweight print-on-end STL'
+            git pull --rebase origin main
+            git push
+          fi
