@@ -26,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y openscad
-          python -m pip install trimesh numpy networkx rtree manifold3d
+          python -m pip install trimesh numpy scipy networkx rtree manifold3d
 
       - name: Export watertight lip and robustly union it with v3 STL
         run: |
