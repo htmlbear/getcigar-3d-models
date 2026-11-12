@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'src/basket_140x350_v4_curved_rim.scad'
+      - 'src/basket_v4/**'
       - '.github/workflows/build-basket-v4-curved-rim.yml'
   workflow_dispatch:
 
@@ -17,15 +18,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OpenSCAD and mesh validators
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install OpenSCAD and robust mesh Boolean tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y openscad
-          python -m pip install --break-system-packages trimesh numpy networkx rtree
+          python -m pip install trimesh numpy networkx rtree manifold3d
 
-      - name: Export basket v4 with continuous rim (preserve v2/v3)
+      - name: Export watertight lip and robustly union it with v3 STL
         run: |
-          openscad -o stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl src/basket_140x350_v4_curved_rim.scad
+          openscad -o /tmp/basket_v4_rim_only.stl src/basket_140x350_v4_curved_rim.scad
+          python src/basket_v4/build_basket_v4.py --rim /tmp/basket_v4_rim_only.stl
 
       - name: Validate manifold rim, matching dimensions and protected label
         run: |
