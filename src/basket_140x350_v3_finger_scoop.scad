@@ -16,7 +16,7 @@
 // applying the subtraction only to Y -1..9 mm and X 10..130.
 // This is a pilot version for physical slicing and load tests.
 
-source_stl = "../../stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl";
+source_stl = "../stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl";
 
 basket_width = 140;
 basket_length = 350;
