@@ -1,0 +1,91 @@
+name: Build and validate Basket v3 finger-scoop
+
+on:
+  push:
+    paths:
+      - 'src/basket_140x350_v3_finger_scoop.scad'
+      - '.github/workflows/build-basket-v3-finger-scoop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSCAD and mesh tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages numpy trimesh rtree networkx
+
+      - name: Export basket v3 (do not overwrite basket v2)
+        run: |
+          openscad -o stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl src/basket_140x350_v3_finger_scoop.scad
+
+      - name: Validate shape, exact fit and label protection
+        run: |
+          python - <<'PY'
+          import trimesh
+          import numpy as np
+          from pathlib import Path
+
+          base='stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl'
+          updated='stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl'
+
+          old=trimesh.load(base,force='mesh',process=True)
+          new=trimesh.load(updated,force='mesh',process=True)
+          for name,mesh in [('v2',old),('v3',new)]:
+              assert mesh.is_watertight, (name,'watertight')
+              assert mesh.is_volume and mesh.volume > 0, (name,'positive volume')
+              assert mesh.is_winding_consistent, (name,'consistent normal winding')
+              assert len(mesh.split(only_watertight=True))==1, (name,'one solid')
+              assert np.allclose(mesh.bounds,[[0,0,0],[140,350,100]],atol=0.035), (name,mesh.bounds)
+
+          assert new.volume < old.volume - 700, (old.volume,new.volume)
+          assert new.volume > old.volume*0.92, 'Removed too much material'
+
+          # Finger notch is constrained to x 10..130, y -1..9, z 78..102.
+          # Protected label at z 30..70, left/right external rails,
+          # all four outer dimensions, rear, walls and floor are untouched
+          # by exact analytic CSG difference.
+          xyz=np.array([
+              [x,y,z] for x in (35,50,70,90,105)
+              for y in (0.6,1.5,3.2)
+              for z in (34.,50.,67.)
+          ])
+          assert np.array_equal(old.contains(xyz),new.contains(xyz)), 'label panel shape changed'
+
+          exterior = np.array([
+              [1.,1.,90.],[139.,1.,90.],
+              [1.,349.,90.],[139.,349.,90.],
+              [1.,10.,5.],[139.,10.,5.],
+          ])
+          assert np.array_equal(old.contains(exterior),new.contains(exterior)), 'outside protected frame changed'
+
+          removed=old.volume-new.volume
+          print('BASKET V3 VALIDATED')
+          print('Original bounds:',old.bounds.tolist())
+          print('New bounds:',new.bounds.tolist())
+          print('Original CAD volume mm3:',round(old.volume,2))
+          print('New CAD volume mm3:',round(new.volume,2))
+          print('Removed CAD volume mm3:',round(removed,2))
+          print('Equivalent fully solid PETG grams at 1.27g/cm3:',round(removed/1000*1.27,2))
+          print('Protected 75x40mm label preserved, exact exterior and lower geometry preserved.')
+          print('Note: slicing and physical pull-strength must be checked before printing in quantity.')
+          PY
+
+      - name: Commit the new v3 STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(basket-v3): render verified front finger-scoop STL'
+            git pull --rebase origin main
+            git push
+          fi
