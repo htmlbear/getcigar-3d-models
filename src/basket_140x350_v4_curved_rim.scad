@@ -59,9 +59,18 @@ module curved_front_rim() {
                 ));
 }
 
-// OpenSCAD's CSG union fuses the rim into the original v3 body, so that
-// honeycomb strut tips terminate within the solid continuous rim.
-union() {
-    import(base_stl, convexity=15);
+// OpenSCAD may fail to convert a fully meshed legacy STL plus a swept
+// rim into a CGAL Nef solid. The verified STL therefore uses a robust
+// manifold-mesh Boolean union in the accompanying Python builder.
+//
+// To preview the full assembly without Boolean render, use F5 in OpenSCAD:
+// for_export=true exports ONLY the watertight curved rim for the mesh builder.
+// The final combined STL is created by src/basket_v4/build_basket_v4.py.
+for_export = true;
+if (for_export) {
+    curved_front_rim();
+} else {
+    // Fast preview only, not a mesh export.
+    %import(base_stl, convexity=15);
     curved_front_rim();
 }
