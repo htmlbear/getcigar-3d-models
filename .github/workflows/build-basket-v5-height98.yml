@@ -1,0 +1,81 @@
+name: Build and validate Basket v5 height 98 mm
+
+on:
+  push:
+    paths:
+      - 'src/basket_v5/**'
+      - '.github/workflows/build-basket-v5-height98.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install mesh Boolean tools
+        run: python -m pip install numpy scipy trimesh manifold3d networkx rtree
+
+      - name: Trim topmost 2 mm of v4 STL
+        run: python src/basket_v5/build_basket_v5_height98.py
+
+      - name: Validate fit and unchanged geometry below Z98
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          base="stl/L_gridfinity_30mm_center_rib/"
+          old=trimesh.load(base+"basket_140x350_v4_curved_rim.stl",force="mesh",process=True)
+          new=trimesh.load(base+"basket_140x350_v5_height98.stl",force="mesh",process=True)
+          assert all((new.is_watertight,new.is_volume,new.is_winding_consistent))
+          assert len(new.split(only_watertight=True))==1, "v5 is disconnected"
+          assert np.allclose(new.bounds,[[0,0,0],[140,350,98]],atol=.025),new.bounds
+
+          # The only difference is a horizontal clip Z>=98. Verify by
+          # directly clipping the SOURCE and measuring its symmetric
+          # difference against v5 using the manifold 3D mesh engine.
+          below=trimesh.creation.box(extents=[160,370,108])
+          below.apply_translation([70,175,44])  # Z=-10..98
+          unchanged=trimesh.boolean.intersection(
+              [old,below],engine="manifold",check_volume=True)
+          lost=trimesh.boolean.difference(
+              [unchanged,new],engine="manifold",check_volume=True)
+          added=trimesh.boolean.difference(
+              [new,unchanged],engine="manifold",check_volume=True)
+          lost_volume=lost.volume if lost is not None else 0.0
+          added_volume=added.volume if added is not None else 0.0
+          assert lost_volume<1 and added_volume<1, (
+              "Geometry below 98 mm changed",lost_volume,added_volume)
+
+          # Original 75x40 mm label, finger scoop and curved lip
+          # below the plane are automatically covered by the above
+          # exact Boolean difference. Also explicitly sample label.
+          p=np.asarray([[x,y,z] for x in (35.,55.,70.,95.,105.)
+                        for y in (.8,1.8,3.2) for z in (32.,52.,68.)])
+          assert np.array_equal(old.contains(p),new.contains(p)), "Label altered"
+
+          print("BASKET V5 HEIGHT98 VALIDATED")
+          print("v4 extent:", old.extents, "v5 extent:", new.extents)
+          print("v4 volume:",round(old.volume,3),"v5 volume:",round(new.volume,3))
+          print("Below 98: removed",round(lost_volume,5),"mm3; added",round(added_volume,5),"mm3")
+          print("Width, depth, finger scoop, continuous rim and label untouched below clipping plane")
+          PY
+
+      - name: Commit only new v5 STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/L_gridfinity_30mm_center_rib/basket_140x350_v5_height98.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(basket-v5): validated 98 mm height STL'
+            git pull --rebase origin main
+            git push
+          fi
