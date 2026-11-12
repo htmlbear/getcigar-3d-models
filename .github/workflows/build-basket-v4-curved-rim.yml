@@ -1,0 +1,104 @@
+name: Build and validate Basket v4 enclosed curved finger rim
+
+on:
+  push:
+    paths:
+      - 'src/basket_140x350_v4_curved_rim.scad'
+      - '.github/workflows/build-basket-v4-curved-rim.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSCAD and mesh validators
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openscad
+          python -m pip install --break-system-packages trimesh numpy networkx rtree
+
+      - name: Export basket v4 with continuous rim (preserve v2/v3)
+        run: |
+          openscad -o stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl src/basket_140x350_v4_curved_rim.scad
+
+      - name: Validate manifold rim, matching dimensions and protected label
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          base='stl/L_gridfinity_30mm_center_rib/'
+          old=trimesh.load(base+'basket_140x350_v3_finger_scoop.stl',force='mesh',process=True)
+          new=trimesh.load(base+'basket_140x350_v4_curved_rim.stl',force='mesh',process=True)
+          ref=trimesh.load(base+'basket_140x350_v2_reinforced_label_75x40.stl',force='mesh',process=True)
+
+          for name,mesh in [('v3',old),('v4',new)]:
+              assert mesh.is_watertight, (name,'unclosed')
+              assert mesh.is_volume and mesh.volume>0, (name,'invalid volume')
+              assert mesh.is_winding_consistent, (name,'normals')
+              assert len(mesh.split(only_watertight=True))==1, (name,'disconnected: free-standing lip or strands!')
+              assert np.allclose(mesh.bounds,[[0.,0.,0.],[140.,350.,100.]],atol=0.035), (name,mesh.bounds)
+
+          # A reinforcing lip ADDs material to v3, but leaves the label intact.
+          assert new.volume > old.volume + 1000, (old.volume,new.volume)
+          assert new.volume < ref.volume + 8000, (old.volume,new.volume,ref.volume)
+
+          # Analogous continuous geometric path as the OpenSCAD sweep.
+          def smooth(t): return t*t*(3-2*t)
+          def height(x):
+              if x<=10 or x>=130:return 100.0
+              if x<55:return 100 - 22*smooth((x-10)/45)
+              if x<=85:return 78.0
+              return 78.0 + 22*smooth((x-85)/45)
+
+          # This uninterrupted SOLID curved belt closes the cut honeycomb
+          # ends. Sample across the entire front width at the belt center.
+          points=np.asarray([[float(x),2.4,height(float(x))-2.7]
+                             for x in range(3,138,3)])
+          assert new.contains(points).all(), 'continuous solid top rim absent or interrupted'
+
+          # At the open notch, airspace ABOVE the rim must still be clear:
+          points_above=np.asarray([[float(x),2.4,height(float(x))+2.0]
+                                   for x in (24,36,48,60,70,80,92,104,116)])
+          assert not new.contains(points_above).any(), 'finger scoop blocked by rim'
+
+          # Label plate X=32.5..107.5, Z=30..70 remains exactly as v3.
+          label_checks=np.asarray([[float(x),float(y),float(z)]
+                                   for x in (34,45,70,95,106)
+                                   for y in (0.7,1.7,3.1)
+                                   for z in (31,42,55,67)])
+          assert np.array_equal(old.contains(label_checks),new.contains(label_checks)), 'label changed'
+
+          # Non-front structures unchanged; no added geometry at Y >= 10.
+          outside=np.asarray([[x,y,z] for x in (1.7,10,70,130,138)
+                              for y in (12.,100.,175.,340.,349.)
+                              for z in (3.,45.,83.,98.)])
+          assert np.array_equal(old.contains(outside),new.contains(outside)), 'body outside scoop changed'
+
+          print('PASS basket v4: watertight, one connected solid, original full envelope')
+          print('Original v2 volume:',round(ref.volume,2),'mm^3')
+          print('Basket v3 volume:',round(old.volume,2),'mm^3')
+          print('Basket v4 volume:',round(new.volume,2),'mm^3')
+          print('v4 minus v3 rim material:',round(new.volume-old.volume,2),'mm^3')
+          print('v4 change relative to v2:',round(new.volume-ref.volume,2),'mm^3')
+          print('Continuous material along the full curved lip: validated by 45 probes')
+          print('Open finger notch and unmodified label: validated')
+          print('Note: real-world load strength and Elegoo Slicer print paths still untested.')
+          PY
+
+      - name: Commit the separate v4 STL without modifying historical models
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(basket-v4): verified rounded full-width finger lip STL'
+            git pull --rebase origin main
+            git push
+          fi
