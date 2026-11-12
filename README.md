@@ -17,12 +17,13 @@
 
 ## Актуальная корзина для модульного бокса
 
-**Basket v3 Finger Scoop** — экспериментальная версия корзины 140×350×100 мм. Из последней v2 удалена часть переднего верхнего обода, чтобы сделать плавную выемку для пальцев, при этом размер площадки под этикетку 75×40 мм сохранён.
+**Basket v4 Curved Rim** — актуальная экспериментальная версия корзины 140×350×100 мм. Исправляет разорванный край выемки v3: добавлен сплошной плавный бортик, соединяющий все обрезанные соты. Площадка этикетки 75×40 мм, размеры и посадка остались прежними.
 
-- [STL корзины v3 с выемкой](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
-- [Исходник OpenSCAD v3](src/basket_140x350_v3_finger_scoop.scad)
-- [Описание и результаты проверки v3](docs/basket_v3_finger_scoop_README.md)
-- [Предыдущая корзина v2 (архив, без изменений)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl)
+- [STL корзины v4 с цельным изогнутым бортиком](stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl)
+- [Исходник OpenSCAD бортика v4](src/basket_140x350_v4_curved_rim.scad), [сборочный скрипт](src/basket_v4/build_basket_v4.py)
+- [Описание конструкции и проверок v4](docs/basket_v4_curved_rim_README.md)
+- [Предыдущая корзина v3 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
+- [Корзина v2 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl)
 
 ## Сначала прочитать
 
