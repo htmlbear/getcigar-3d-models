@@ -17,12 +17,13 @@
 
 ## Актуальная корзина для модульного бокса
 
-**Basket v4 Curved Rim** — актуальная экспериментальная версия корзины 140×350×100 мм. Исправляет разорванный край выемки v3: добавлен сплошной плавный бортик, соединяющий все обрезанные соты. Площадка этикетки 75×40 мм, размеры и посадка остались прежними.
+**Basket v5 Height 98** — актуальная корзина **140×350×98 мм** на основе v4. Ровно 2 мм снято сверху по плоскости Z=98, без изменения ширины, глубины и всей геометрии ниже этой плоскости. Контрольные CAD-проверки пройдены; физическая посадка и прочность после печати ещё требуют проверки.
 
-- [STL корзины v4 с цельным изогнутым бортиком](stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl)
-- [Исходник OpenSCAD бортика v4](src/basket_140x350_v4_curved_rim.scad), [сборочный скрипт](src/basket_v4/build_basket_v4.py)
-- [Описание конструкции и проверок v4](docs/basket_v4_curved_rim_README.md)
-- [Предыдущая корзина v3 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
+- [Готовый STL корзины v5 высотой 98 мм](stl/L_gridfinity_30mm_center_rib/basket_140x350_v5_height98.stl)
+- [Воспроизводимый скрипт v5](src/basket_v5/build_basket_v5_height98.py)
+- [Описание и проверки v5](docs/basket_v5_height98_README.md)
+- [Предыдущая корзина v4, высота 100 мм (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl)
+- [Корзина v3 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
 - [Корзина v2 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl)
 
 ## Сначала прочитать
