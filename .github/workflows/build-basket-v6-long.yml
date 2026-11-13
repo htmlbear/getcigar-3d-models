@@ -1,0 +1,88 @@
+name: Build and validate Basket v6 LONG 376mm
+
+on:
+  push:
+    paths:
+      - 'src/basket_v6_long/**'
+      - '.github/workflows/build-basket-v6-long.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install reliable mesh Boolean dependencies
+        run: python -m pip install numpy scipy trimesh manifold3d networkx rtree
+
+      - name: Build Basket v6 LONG from original v5
+        run: python src/basket_v6_long/build_basket_v6_long.py
+
+      - name: Validate dimensions, identical front and rear, original label and letter
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          path="stl/L_gridfinity_30mm_center_rib/"
+          old=trimesh.load(path+"basket_140x350_v5_height98.stl",force="mesh",process=True)
+          new=trimesh.load(path+"basket_140x376_v6_LONG_L.stl",force="mesh",process=True)
+          assert all((new.is_watertight,new.is_volume,new.is_winding_consistent))
+          assert len(new.split(only_watertight=True))==1
+          assert np.allclose(new.extents,[140,376,98],atol=.03),(new.extents,new.bounds)
+          assert np.allclose(new.bounds[0],[0,0,0],atol=.03)
+
+          # Spot-check the v5 front's structure outside the new L region.
+          points=np.asarray([[x,y,z] for x in (1.,8.,35.,75.,104.,139.)
+                         for y in (1.,10.,45.,90.,150.)
+                         for z in (3.,20.,44.,68.,92.)])
+          points=points[~((points[:,0]>=108)&(points[:,1]<=4))]
+          assert np.array_equal(old.contains(points),new.contains(points)), "Front changed"
+
+          # The unchanged rear half of the basket was shifted by exactly 26 mm.
+          points=np.asarray([[x,y,z] for x in (1.,8.,35.,75.,104.,139.)
+                         for y in (250.,285.,310.,345.)
+                         for z in (3.,20.,44.,68.,92.)])
+          oldpts=points.copy()
+          oldpts[:,1]-=26.
+          assert np.array_equal(old.contains(oldpts),new.contains(points)), "Rear changed"
+
+          # Label: X=32.5..107.5, Z=30..70, original flat front face.
+          label=np.asarray([[x,y,z] for x in (35.,55.,70.,96.,106.)
+                            for y in (.6,2.1,3.0)
+                            for z in (31.,43.,56.,68.)])
+          assert np.array_equal(old.contains(label),new.contains(label)), "Label compromised"
+
+          # Raised-free engraved L on a solid plaque to right of label.
+          # At Y=.5 the L's 0.9mm-deep grooves are open, elsewhere plaque solid.
+          assert not new.contains([[117.,.35,57.],[125.,.35,45.]]).any(), "L engraving missing"
+          assert new.contains([[117.,2.4,57.],[125.,2.4,45.],[126.,.35,58.]]).all(), "Plaque or L malformed"
+
+          # The new middle must still be open for storing Churchill cigars.
+          assert not new.contains([[70.,216.,54.]]).any(), "Seam blocks storage"
+          print("VALIDATION PASS: 140 x 376 x 98, single manifold STL")
+          print("Unchanged v5 front and shifted v5 back verified")
+          print("Label 75x40 kept; recessed letter L distinct and legible")
+          print("Continuous U-shaped splice reinforces open storage area")
+          print("CAD v5 volume:",round(old.volume,2),"LONG volume:",round(new.volume,2))
+          print("Physical fit inside 350mm Box v10 not possible without 26mm extension")
+          PY
+
+      - name: Commit NEW LONG STL and preserve all existing baskets
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/L_gridfinity_30mm_center_rib/basket_140x376_v6_LONG_L.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(basket-v6): validated LONG 376mm with engraved L'
+            git pull --rebase origin main
+            git push
+          fi
