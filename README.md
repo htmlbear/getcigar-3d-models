@@ -23,7 +23,13 @@
 - [Скрипт сборки Basket LONG](src/basket_v6_long/build_basket_v6_long.py)
 - [Описание и проверки Basket LONG](docs/basket_v6_LONG_README.md)
 
-**Стандартная корзина осталась v5, глубина 350 мм, высота 98 мм:**
+**Стандартная корзина v7**, глубина 350 мм, высота 98 мм: нижние косые боковые усилители заменены прямоугольными, опирающимися на дно. Изменение пока экспериментальное и требует проверки в Elegoo Slicer.
+
+- [STL стандартной корзины v7](stl/L_gridfinity_30mm_center_rib/basket_140x350_v7_rectangular_ribs.stl)
+- [Исходник сборки v7](src/basket_v7_rectangular_ribs/build_basket_v7.py)
+- [Описание изменений и проверок v7](docs/basket_v7_rectangular_ribs_README.md)
+
+**Предыдущая стандартная v5** (исходник, без изменений):
 
 - [STL корзины v5](stl/L_gridfinity_30mm_center_rib/basket_140x350_v5_height98.stl)
 - [Скрипт v5](src/basket_v5/build_basket_v5_height98.py)
