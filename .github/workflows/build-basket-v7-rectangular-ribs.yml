@@ -1,0 +1,91 @@
+name: Build Basket v7 standard with 90-degree side ribs
+
+on:
+  push:
+    paths:
+      - 'src/basket_v7_rectangular_ribs/**'
+      - '.github/workflows/build-basket-v7-rectangular-ribs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install robust mesh Boolean tools
+        run: python -m pip install numpy scipy trimesh manifold3d networkx rtree
+
+      - name: Build standard 350 mm Basket v7 from the exact v5 STL
+        run: python src/basket_v7_rectangular_ribs/build_basket_v7.py
+
+      - name: Check dimensions, unchanged features and no inclined gussets
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import trimesh
+
+          folder="stl/L_gridfinity_30mm_center_rib/"
+          old=trimesh.load(folder+"basket_140x350_v5_height98.stl",force="mesh",process=True)
+          new=trimesh.load(folder+"basket_140x350_v7_rectangular_ribs.stl",force="mesh",process=True)
+          assert all([new.is_volume,new.is_watertight,new.is_winding_consistent])
+          assert len(new.split(only_watertight=True))==1, "Disconnected mesh"
+          assert np.allclose(new.bounds,old.bounds,atol=.035)
+          assert np.allclose(new.extents,[140,350,98],atol=.035)
+
+          # Original flat front label area: 75x40 mm, completely untouched.
+          label=np.asarray([[x,y,z] for x in (34.,50.,70.,90.,106.)
+                            for y in (.6,1.5,3.1)
+                            for z in (31.,43.,57.,69.)])
+          assert np.array_equal(old.contains(label),new.contains(label)), "Label changed"
+
+          # Original upper handle scoop+protective rim and upper
+          # honeycomb: unchanged (all modifications are Z < 12.1).
+          upper=np.asarray([[x,y,z] for x in (1.,2.,5.,8.,25.,70.,115.,132.,138.,139.)
+                             for y in (1.,15.,110.,175.,235.,330.,349.)
+                             for z in (15.,35.,65.,85.,96.)])
+          assert np.array_equal(old.contains(upper),new.contains(upper)), "Upper structure changed"
+
+          # Original floor lattice away from reinforced side edges unchanged.
+          floor=np.asarray([[x,y,z] for x in (15.,30.,55.,75.,95.,110.,125.)
+                            for y in (3.,35.,70.,100.,140.,175.,205.,250.,290.,345.)
+                            for z in (.8,2.0,3.5,5.)])
+          assert np.array_equal(old.contains(floor),new.contains(floor)), "Center floor grid changed"
+
+          # Four cross-section tests: original diagonal spur
+          # removed at x8, z5.5; a squared-up vertical rib is
+          # present at x5, z10. Across entire length it is continuous.
+          new_void=np.asarray([[x,y,5.5] for x in (8.,132.) for y in (20.,100.,175.,280.,330.)])
+          new_rib=np.asarray([[x,y,10.] for x in (5.,135.) for y in (20.,100.,175.,280.,330.)])
+          new_base=np.asarray([[x,y,3.0] for x in (8.,132.) for y in (20.,100.,175.,280.,330.)])
+          assert not new.contains(new_void).any(), "Angled overhang is still present"
+          assert new.contains(new_rib).all(), "Rectangular vertical rib has gaps"
+          assert new.contains(new_base).all(), "Original bottom rail damaged"
+
+          print("VALIDATION PASSED: Basket v7 rectangular 90-degree side ribs")
+          print("Dimensions:",new.extents.tolist())
+          print("v5 CAD volume mm3:",round(old.volume,2))
+          print("v7 CAD volume mm3:",round(new.volume,2))
+          print("Difference mm3:",round(new.volume-old.volume,2))
+          print("Continuity of each vertical rib checked at five positions")
+          print("Front label, finger scoop, upper mesh, central floor unchanged")
+          print("NOTE: verify print paths in Elegoo Slicer and test a real basket before serial printing")
+          PY
+
+      - name: Commit only new Basket v7 STL
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/L_gridfinity_30mm_center_rib/basket_140x350_v7_rectangular_ribs.stl
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(basket-v7): verified standard 350mm basket with 90-degree side ribs'
+            git pull --rebase origin main
+            git push
+          fi
