@@ -43,7 +43,7 @@ jobs:
           # Spot-check the v5 front's structure outside the new L region.
           points=np.asarray([[x,y,z] for x in (1.,8.,35.,75.,104.,139.)
                          for y in (1.,10.,45.,90.,150.)
-                         for z in (3.,20.,44.,68.,92.)])
+                         for z in (1.5,20.,44.,68.,92.)])
           points=points[~((points[:,0]>=108)&(points[:,1]<=4))]
           diff=np.where(old.contains(points)!=new.contains(points))[0]
           print("FRONT DIFFERENCES",len(diff),points[diff[:35]].tolist(),flush=True)
@@ -52,7 +52,7 @@ jobs:
           # The unchanged rear half of the basket was shifted by exactly 26 mm.
           points=np.asarray([[x,y,z] for x in (1.,8.,35.,75.,104.,139.)
                          for y in (250.,285.,310.,345.)
-                         for z in (3.,20.,44.,68.,92.)])
+                         for z in (1.5,20.,44.,68.,92.)])
           oldpts=points.copy()
           oldpts[:,1]-=26.
           assert np.array_equal(old.contains(oldpts),new.contains(points)), "Rear changed"
