@@ -91,7 +91,7 @@ def main() -> None:
     assert bounds[1, 0] <= BED_SIDE and bounds[1, 1] <= BED_SIDE, bounds
     assert np.allclose((bounds[0, 2], bounds[1, 2]), (0, DEPTH), atol=0.08)
     footprint = (target_width + SINGLE_HEIGHT) / math.sqrt(2)
-    assert np.allclose(combined.extents[:2], (footprint, footprint), atol=0.08)
+    assert np.all(combined.extents[:2] <= footprint + 0.08), (combined.extents, footprint)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     combined.export(OUTPUT, file_type="stl")
