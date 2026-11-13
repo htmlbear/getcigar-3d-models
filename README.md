@@ -17,14 +17,20 @@
 
 ## Актуальная корзина для модульного бокса
 
-**Basket v5 Height 98** — актуальная корзина **140×350×98 мм** на основе v4. Ровно 2 мм снято сверху по плоскости Z=98, без изменения ширины, глубины и всей геометрии ниже этой плоскости. Контрольные CAD-проверки пройдены; физическая посадка и прочность после печати ещё требуют проверки.
+**Basket v6 LONG** — отдельная удлинённая корзина **140×376×98 мм**, основана на последней стандартной v5. Сетка удлинена вставкой 26 мм без растягивания существующих сот, на фасаде справа от этикетки углублённая буква **L** (Long). Сборка и проверка CAD прошли, физическая печать пока не испытана.
 
-- [Готовый STL корзины v5 высотой 98 мм](stl/L_gridfinity_30mm_center_rib/basket_140x350_v5_height98.stl)
-- [Воспроизводимый скрипт v5](src/basket_v5/build_basket_v5_height98.py)
-- [Описание и проверки v5](docs/basket_v5_height98_README.md)
-- [Предыдущая корзина v4, высота 100 мм (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl)
-- [Корзина v3 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
-- [Корзина v2 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl)
+- [STL Basket v6 LONG, 376 мм](stl/L_gridfinity_30mm_center_rib/basket_140x376_v6_LONG_L.stl)
+- [Скрипт сборки Basket LONG](src/basket_v6_long/build_basket_v6_long.py)
+- [Описание и проверки Basket LONG](docs/basket_v6_LONG_README.md)
+
+**Стандартная корзина осталась v5, глубина 350 мм, высота 98 мм:**
+
+- [STL корзины v5](stl/L_gridfinity_30mm_center_rib/basket_140x350_v5_height98.stl)
+- [Скрипт v5](src/basket_v5/build_basket_v5_height98.py)
+- [Описание v5](docs/basket_v5_height98_README.md)
+- [v4, высота 100 мм (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v4_curved_rim.stl)
+- [v3 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v3_finger_scoop.stl)
+- [v2 (архив)](stl/L_gridfinity_30mm_center_rib/basket_140x350_v2_reinforced_label_75x40.stl)
 
 ## Сначала прочитать
 
