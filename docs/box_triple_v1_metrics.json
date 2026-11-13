@@ -1,0 +1,44 @@
+{
+  "status": "CAD-validated, unprinted",
+  "source": "stl/box80_v10_light_PRINT_ON_END_150x120x350.stl",
+  "stl": "stl/box_triple_v1_PRINT_45DEG_400p22x400p22x350.stl",
+  "basket_fit": "Original Box v10 passages 142 x 100 mm, untouched in each bay",
+  "bays": 3,
+  "single_base_mm": [
+    150,
+    120,
+    350
+  ],
+  "lateral_pitch_mm": 148.0,
+  "triple_unrotated_mm": [
+    446.0,
+    120,
+    350
+  ],
+  "rotation_about_vertical_degrees": 45.0,
+  "xy_print_footprint_mm": [
+    396.882,
+    396.882
+  ],
+  "z_print_height_mm": 350.0,
+  "xy_min_mm": [
+    13.033,
+    10.085
+  ],
+  "xy_max_mm": [
+    409.915,
+    406.967
+  ],
+  "single_v10_cad_volume_mm3": 310657.379,
+  "three_separate_v10_cad_volume_mm3": 931972.138,
+  "triple_cad_volume_mm3": 857112.437,
+  "cad_volume_saved_mm3": 74859.68,
+  "cad_volume_saved_percent": 8.032,
+  "petg_solid_equivalent_saving_g_not_slicer": 95.072,
+  "mesh_watertight": true,
+  "mesh_single_connected_body": true,
+  "physical_basket_compatibility_verified": false,
+  "actual_slicer_consumption_verified": false,
+  "no_supports_verified_in_slicer": false,
+  "safe_six_high_load_verified": false
+}
