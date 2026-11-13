@@ -1,0 +1,36 @@
+name: Build and validate Box Triple v1
+
+on:
+  push:
+    branches:
+      - feature/box-triple-v1
+    paths:
+      - 'src/box_triple_v1/**'
+      - '.github/workflows/build-box-triple-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CAD Boolean and mesh validation dependencies
+        run: |
+          python -m pip install --break-system-packages numpy trimesh manifold3d networkx
+      - name: Build exact monolithic Box Triple v1 and validate geometry
+        run: |
+          python src/box_triple_v1/build_box_triple_v1.py
+      - name: Commit validated STL and CAD measurements to feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add stl/box_triple_v1_PRINT_45DEG_400p22x400p22x350.stl docs/box_triple_v1_metrics.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(box-triple-v1): validated 45-degree printable monolith'
+            git pull --rebase origin feature/box-triple-v1
+            git push origin HEAD:feature/box-triple-v1
+          fi
