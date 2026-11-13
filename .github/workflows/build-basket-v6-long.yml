@@ -45,7 +45,9 @@ jobs:
                          for y in (1.,10.,45.,90.,150.)
                          for z in (3.,20.,44.,68.,92.)])
           points=points[~((points[:,0]>=108)&(points[:,1]<=4))]
-          assert np.array_equal(old.contains(points),new.contains(points)), "Front changed"
+          diff=np.where(old.contains(points)!=new.contains(points))[0]
+          print("FRONT DIFFERENCES",len(diff),points[diff[:35]].tolist(),flush=True)
+          assert len(diff)==0, "Front changed"
 
           # The unchanged rear half of the basket was shifted by exactly 26 mm.
           points=np.asarray([[x,y,z] for x in (1.,8.,35.,75.,104.,139.)
